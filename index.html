@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pattern Maker</title>
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔓</text></svg>">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f4f5f7;
+            font-family: 'Orbitron', sans-serif; 
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 30px 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Style du titre */
+        h1 {
+            margin: 0 0 15px 0;
+            color: #1e293b;
+            font-size: 28px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Style du champ de texte */
+        #filenameInput {
+            margin-bottom: 20px;
+            padding: 10px 15px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 14px;
+            color: #1e293b;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            outline: none;
+            width: 80%;
+            text-align: center;
+            transition: border-color 0.2s;
+            background-color: #f8fafc;
+        }
+
+        #filenameInput:focus {
+            border-color: #ef4444; /* Devient rouge au clic */
+            background-color: #ffffff;
+        }
+
+        #filenameInput::placeholder {
+            color: #94a3b8;
+        }
+
+        canvas {
+            cursor: crosshair;
+            touch-action: none;
+            margin-bottom: 20px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #resetBtn {
+            background-color: #e2e8f0;
+            color: #475569;
+        }
+
+        #resetBtn:hover {
+            background-color: #cbd5e1;
+        }
+
+        #downloadBtn {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        #downloadBtn:hover {
+            background-color: #dc2626;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Pattern</h1>
+        <input type="text" id="filenameInput" placeholder="Nom de la personne...">
+        
+        <canvas id="patternCanvas" width="300" height="300"></canvas>
+        
+        <div class="buttons">
+            <button id="resetBtn">Reset</button>
+            <button id="downloadBtn">Télécharger PNG</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('patternCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Paramètres
+        const gridSize = 3;
+        const dotRadius = 16; 
+        const spacing = 100;
+        const padding = 50;
+        
+        // Couleurs
+        const colorDotNormal = '#475569';
+        const colorDotActive = '#ef4444';
+        const colorLine = 'rgba(239, 68, 68, 0.6)';
+        const colorText = '#ffffff';
+
+        let dots = [];
+        let pattern = [];
+        let isDrawing = false;
+        let currentMousePos = null;
+
+        function initDots() {
+            dots = [];
+            for (let row = 0; row < gridSize; row++) {
+                for (let col = 0; col < gridSize; col++) {
+                    dots.push({
+                        id: row * gridSize + col,
+                        x: padding + col * spacing,
+                        y: padding + row * spacing
+                    });
+                }
+            }
+        }
+
+        function drawArrowhead(ctx, x, y, angle) {
+            ctx.fillStyle = colorLine;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            const size = 12;
+            ctx.lineTo(x - size * Math.cos(angle - Math.PI / 6), y - size * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(x - size * Math.cos(angle + Math.PI / 6), y - size * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Dessiner les lignes et les flèches
+            if (pattern.length > 1) {
+                for (let i = 0; i < pattern.length - 1; i++) {
+                    const p1 = pattern[i];
+                    const p2 = pattern[i + 1];
+
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.strokeStyle = colorLine;
+                    ctx.lineWidth = 6;
+                    ctx.stroke();
+
+                    const midX = (p1.x + p2.x) / 2;
+                    const midY = (p1.y + p2.y) / 2;
+                    const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+                    drawArrowhead(ctx, midX, midY, angle);
+                }
+            }
+
+            // Ligne temporaire
+            if (isDrawing && currentMousePos && pattern.length > 0) {
+                const lastDot = pattern[pattern.length - 1];
+                ctx.beginPath();
+                ctx.moveTo(lastDot.x, lastDot.y);
+                ctx.lineTo(currentMousePos.x, currentMousePos.y);
+                ctx.strokeStyle = colorLine;
+                ctx.lineWidth = 6;
+                ctx.stroke();
+            }
+
+            // 2. Dessiner les points
+            dots.forEach(dot => {
+                const index = pattern.indexOf(dot);
+                const isActive = index !== -1;
+                
+                ctx.beginPath();
+                ctx.arc(dot.x, dot.y, isActive ? dotRadius : 10, 0, Math.PI * 2);
+                ctx.fillStyle = isActive ? colorDotActive : colorDotNormal;
+                ctx.fill();
+
+                if (isActive) {
+                    ctx.fillStyle = colorText;
+                    ctx.font = 'bold 16px "Orbitron", sans-serif'; 
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(index + 1, dot.x, dot.y + 1); 
+                }
+            });
+        }
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function checkIntersection(pos) {
+            for (let dot of dots) {
+                const distance = Math.sqrt((pos.x - dot.x) ** 2 + (pos.y - dot.y) ** 2);
+                if (distance < 25 && !pattern.includes(dot)) {
+                    pattern.push(dot);
+                    break;
+                }
+            }
+        }
+
+        function startDrawing(e) {
+            // Empêche le comportement par défaut (scroll sur mobile) SAUF si on clique sur l'input
+            if(e.target.tagName.toLowerCase() !== 'input') {
+                e.preventDefault();
+            }
+            const pos = getMousePos(e);
+            pattern = [];
+            checkIntersection(pos);
+            if (pattern.length > 0) isDrawing = true;
+            draw();
+        }
+
+        function continueDrawing(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            currentMousePos = getMousePos(e);
+            checkIntersection(currentMousePos);
+            draw();
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+            currentMousePos = null;
+            draw();
+        }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', continueDrawing);
+        window.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('touchstart', startDrawing, {passive: false});
+        canvas.addEventListener('touchmove', continueDrawing, {passive: false});
+        window.addEventListener('touchend', stopDrawing);
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            pattern = [];
+            draw();
+        });
+
+        // Logique de téléchargement avec le nom dynamique
+        document.getElementById('downloadBtn').addEventListener('click', () => {
+            // Récupérer le nom entré par l'utilisateur (et enlever les espaces inutiles)
+            const inputValue = document.getElementById('filenameInput').value.trim();
+            
+            // Si le champ est vide, on utilise "pattern" par défaut, sinon on prend le nom
+            const finalFilename = inputValue !== "" ? `${inputValue}.png` : "pattern.png";
+
+            const dataURL = canvas.toDataURL("image/png");
+            const link = document.createElement("a");
+            link.download = finalFilename;
+            link.href = dataURL;
+            link.click();
+        });
+
+        document.fonts.ready.then(() => {
+            initDots();
+            draw();
+        });
+    </script>
+</body>
+</html>
