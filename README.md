@@ -1,6 +1,6 @@
 # Pattern Maker 🔓
 
-Un visualiseyr de "Pattern Lock" (schéma de déverrouillage) super simple et léger.
+Un visualiseur de "Pattern Lock" (schéma de déverrouillage) super simple et léger.
 
 J'ai créé ce petit outil à la base pour mon frère qui en avait besoin pour générer rapidement des schémas de verrouillage de multiples appareils avec un rendu propre, et j'ai décidé d'en faire un site prêt à l'emploi.
 
