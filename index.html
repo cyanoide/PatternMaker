@@ -33,7 +33,6 @@
             align-items: center;
         }
 
-        /* Style du titre */
         h1 {
             margin: 0 0 15px 0;
             color: #1e293b;
@@ -42,7 +41,6 @@
             letter-spacing: 2px;
         }
 
-        /* Style du champ de texte */
         #filenameInput {
             margin-bottom: 20px;
             padding: 10px 15px;
@@ -59,7 +57,7 @@
         }
 
         #filenameInput:focus {
-            border-color: #ef4444; /* Devient rouge au clic */
+            border-color: #ef4444;
             background-color: #ffffff;
         }
 
@@ -71,6 +69,7 @@
             cursor: crosshair;
             touch-action: none;
             margin-bottom: 20px;
+            /* Le CSS forcera l'affichage visuel, la vraie taille est gérée en JS */
         }
 
         .buttons {
@@ -116,7 +115,7 @@
         <h1>Pattern</h1>
         <input type="text" id="filenameInput" placeholder="Nom de la personne...">
         
-        <canvas id="patternCanvas" width="300" height="300"></canvas>
+        <canvas id="patternCanvas"></canvas>
         
         <div class="buttons">
             <button id="resetBtn">Reset</button>
@@ -128,7 +127,23 @@
         const canvas = document.getElementById('patternCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Paramètres
+        // --- GESTION DE LA HAUTE RÉSOLUTION ---
+        const logicalSize = 300; // Taille visible à l'écran (en CSS)
+        const scaleFactor = 3;   // Multiplicateur de résolution (3x = image ultra nette)
+
+        // Taille réelle en pixels du fichier image final (900x900)
+        canvas.width = logicalSize * scaleFactor;
+        canvas.height = logicalSize * scaleFactor;
+
+        // Taille d'affichage contrainte par le CSS (300x300)
+        canvas.style.width = logicalSize + 'px';
+        canvas.style.height = logicalSize + 'px';
+
+        // On adapte l'échelle du "pinceau" pour que nos coordonnées de base continuent de fonctionner
+        ctx.scale(scaleFactor, scaleFactor);
+        // ---------------------------------------
+
+        // Paramètres de dessin (basés sur la taille logique de 300)
         const gridSize = 3;
         const dotRadius = 16; 
         const spacing = 100;
@@ -170,7 +185,8 @@
         }
 
         function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // On efface en utilisant la taille logique
+            ctx.clearRect(0, 0, logicalSize, logicalSize);
 
             // 1. Dessiner les lignes et les flèches
             if (pattern.length > 1) {
@@ -224,6 +240,7 @@
         }
 
         function getMousePos(e) {
+            // getBoundingClientRect donne la taille CSS visuelle, donc ça correspond pile à nos coordonnées logiques !
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -241,7 +258,6 @@
         }
 
         function startDrawing(e) {
-            // Empêche le comportement par défaut (scroll sur mobile) SAUF si on clique sur l'input
             if(e.target.tagName.toLowerCase() !== 'input') {
                 e.preventDefault();
             }
@@ -278,12 +294,8 @@
             draw();
         });
 
-        // Logique de téléchargement avec le nom dynamique
         document.getElementById('downloadBtn').addEventListener('click', () => {
-            // Récupérer le nom entré par l'utilisateur (et enlever les espaces inutiles)
             const inputValue = document.getElementById('filenameInput').value.trim();
-            
-            // Si le champ est vide, on utilise "pattern" par défaut, sinon on prend le nom
             const finalFilename = inputValue !== "" ? `${inputValue}.png` : "pattern.png";
 
             const dataURL = canvas.toDataURL("image/png");
